@@ -3,9 +3,11 @@ html, body {
         height: 100%;
 }
 .nav {
+        height:36px;
         text-align:center;
         background-color: #222222;
         margin:0 auto;
+        padding:0;
         position:fixed;
         width:100%;
 }
@@ -21,7 +23,7 @@ html, body {
     text-transform: uppercase;
 }
 .nav a:hover, a:active {
-       background-color: #111111;
+        background-color: #111111;
 }
 .nav ul {
         display:inline-block;
@@ -44,7 +46,7 @@ html, body {
         
         overflow:hidden;
         position: relative;
-        top: 41px;
+        top: 36px;
 }
 .v-center {
         margin-top:9%;
