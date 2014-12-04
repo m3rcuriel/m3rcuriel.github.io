@@ -4,6 +4,7 @@ html, body {
 }
 .nav {
         text-align:center;
+        background-color: #222222;
         margin:0 auto;
         position:fixed;
         width:100%;
@@ -40,12 +41,12 @@ html, body {
         margin:0 auto;
         min-height:40%;
         width:100%;
-        background-color:#888899;
+        background-color:#888888;
         overflow:hidden;
 }
 .v-center {
-        margin-top:5%;
-        margin-bottom:5%;
+        margin-top:9%;
+        margin-bottom:9%;
 }
 h1 {
         font-family:'Ubuntu', sans-serif;
