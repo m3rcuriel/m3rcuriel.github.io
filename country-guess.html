@@ -457,15 +457,15 @@ function samples(){if(SAMP)return SAMP;SAMP=[];
     for(let i=0;i<n;i++){const q=p.getPointAtLength(i*len/n);SAMP.push({c:p.dataset.c,x:L.x+q.x*L.s,y:L.y+q.y*L.s,r:0,e:p})}});
   main.querySelectorAll("circle.m").forEach(m=>{const L=LAY[m.dataset.v];SAMP.push({c:m.dataset.c,x:L.x+m.cx.baseVal.value*L.s,y:L.y+m.cy.baseVal.value*L.s,r:m.dataset.r*L.s,e:m})});
   return SAMP}
-function resolve(e,remember){const F=(e.pointerType||lastType)==="mouse"?4:+S.pTol;toast("");
+function resolve(e,remember){const F=lastType==="mouse"?4:+S.pTol;toast("");
   const b=main.getBoundingClientRect(),vh=vb.w*asp,k=Math.min(b.width/vb.w,b.height/vh); // screen px per canvas unit, allowing for letterboxing
   const tx=vb.x+(e.clientX-b.left-(b.width-vb.w*k)/2)/k,ty=vb.y+(e.clientY-b.top-(b.height-vh*k)/2)/k; // tap in canvas units
   const set=S[gm+"Places"],near=new Map(),skip=c=>!inSet(c,set)||(quizOn&&gm==="p"&&DONE.has(c));onDone=false;
   for(const p of samples()){if(skip(p.c))continue;const d=Math.max(0,(Math.hypot(p.x-tx,p.y-ty)-p.r)*k);if(d>F)continue;const o=near.get(p.c);if(!o||d<o.d)near.set(p.c,{d,e:p.e})}
-  const under=document.elementFromPoint(e.clientX,e.clientY),uc0=under&&main.contains(under)&&!under.classList.contains("off")&&inSet(under.dataset.c||"",set)?under.dataset.c:null;
+  const under=document.elementFromPoint(e.clientX,e.clientY),uc0=under&&main.contains(under)&&under.dataset.c&&!under.classList.contains("off")&&inSet(under.dataset.c,set)?under.dataset.c:null;
   if(uc0&&skip(uc0)){onDone=true;return null}          // straight onto a place that is already done
   const uc=uc0;
-  if(uc&&!under.classList.contains("z"))near.set(uc,{d:0,e:under});
+  if(uc)near.set(uc,{d:0,e:under});   // on a shape, a dot, or inside a nation's sea zone
   const list=[...near].sort((a,b)=>a[1].d-b[1].d);NEAR=list.map(v=>v[0]);
   if(uc&&!under.classList.contains("z")){const r=under.getBoundingClientRect();if(Math.min(r.width,r.height)>=24)return uc}   // inside a shape big enough to aim at: not in doubt
   if(!list.length)return uc;                           // nothing in reach: the sea zone under the finger, or open water
@@ -475,7 +475,7 @@ function resolve(e,remember){const F=(e.pointerType||lastType)==="mouse"?4:+S.pT
   const ra=list[0][1].e.getBoundingClientRect(),rb=list[1][1].e.getBoundingClientRect(),sep=Math.hypot(ra.left+ra.width/2-rb.left-rb.width/2,ra.top+ra.height/2-rb.top-rb.height/2);
   zoomAt(Math.max(3,Math.min(12,2.6*F/Math.max(sep,1))),e.clientX,e.clientY);toast("Too close to call. Zoomed in: tap the one you mean.");return false}
 let charged=new Set(); // wrong places already charged for the current question
-function tap(e){if(!cur||busy)return;if(ring.classList.contains("miss")){ring.classList.remove("miss");ring.setAttribute("visibility","hidden")}const choice=resolve(e,true);if(choice===null){qmsg(onDone?"That one is already done. Tap another place.":"That is open water. Tap a place.");return}if(choice===false)return;
+function tap(e){if(!cur||busy)return;if(ring.classList.contains("miss")){ring.classList.remove("miss");ring.setAttribute("visibility","hidden")}const choice=resolve(e,true);if(choice===false)return;if(choice==null||!P[choice]){qmsg(onDone?"That one is already done. Tap another place.":"That is open water. Tap a place.");return}
   if(choice!==cur&&NEAR.includes(cur)&&vb.w>CAN.w/80*1.01){if(!saved)saved={x:vb.x,y:vb.y,w:vb.w};zoomAt(3,e.clientX,e.clientY);qmsg("");toast("Close. Zoomed in: tap the one you mean.");return}
   if(choice!==cur&&charged.has(choice)){if(!S.pHard)flash(choice);qmsg(`${S.pHard?"You already tried that place.":"Still not "+P[choice].n+"."} ${MAXT-tries} ${MAXT-tries===1?"guess":"guesses"} left.`,"bad");return}
   charged.add(choice);
