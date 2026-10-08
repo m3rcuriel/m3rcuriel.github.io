@@ -352,7 +352,9 @@ main.addEventListener("wheel",e=>{e.preventDefault();zoomAt(Math.exp(-e.deltaY*.
 const pts=new Map();let pinch=0;
 // A tap only counts if it was one finger, barely moved, was brief, and did not land in the instant after a touch pan or pinch
 let g={t:0,x:0,y:0,multi:false,far:0},lastGesture=0,tapOK=false;
-main.addEventListener("pointerdown",e=>{pts.set(e.pointerId,[e.clientX,e.clientY]);if(pts.size===1){moved=false;g={t:performance.now(),x:e.clientX,y:e.clientY,multi:false,far:0,touch:e.pointerType!=="mouse"}}else g.multi=true;
+// A first finger (or a mouse press) means nothing else is down: forget any pointer whose lift was missed,
+// or every later drag would be read as a pinch and every tap as a two-finger touch.
+main.addEventListener("pointerdown",e=>{if(e.isPrimary){pts.clear();pinch=0}pts.set(e.pointerId,[e.clientX,e.clientY]);if(pts.size===1){moved=false;g={t:performance.now(),x:e.clientX,y:e.clientY,multi:false,far:0,touch:e.pointerType!=="mouse"}}else g.multi=true;
   if(pts.size===2){const[a,b]=[...pts.values()];pinch=Math.hypot(a[0]-b[0],a[1]-b[1]);moved=true}});
 main.addEventListener("pointermove",e=>{const p=pts.get(e.pointerId);if(!p)return;g.far=Math.max(g.far,Math.hypot(e.clientX-g.x,e.clientY-g.y));
   const dx=e.clientX-p[0],dy=e.clientY-p[1];
@@ -363,6 +365,8 @@ main.addEventListener("pointermove",e=>{const p=pts.get(e.pointerId);if(!p)retur
     if(pinch)zoomAt(d/pinch,(a[0]+b[0])/2,(a[1]+b[1])/2);pinch=d;}});
 const up=e=>{const now=performance.now();if(pts.size===1)tapOK=e.type==="pointerup"&&!moved&&!g.multi&&g.far<8&&(!g.touch||now-g.t<700)&&g.t-lastGesture>150;if(g.touch&&(moved||g.multi))lastGesture=now;pts.delete(e.pointerId);if(pts.size<2)pinch=0;if(!pts.size){main.classList.remove("drag");setTimeout(()=>moved=false,0)}};
 main.addEventListener("pointerup",up);main.addEventListener("pointercancel",up);
+// a lift that lands outside the map still ends that pointer
+for(const t of ["pointerup","pointercancel"])addEventListener(t,e=>{if(!pts.has(e.pointerId)||main.contains(e.target))return;pts.delete(e.pointerId);if(pts.size<2)pinch=0;if(!pts.size){main.classList.remove("drag");setTimeout(()=>moved=false,0)}});
 
 // Name-it mode: one place is highlighted, the player types its name
 const ALT={USA:"usa|us|united states of america|america",GBR:"uk|great britain|britain",CZE:"czech republic|czechia",COD:"drc|dr congo|congo kinshasa|democratic republic of congo|dem rep congo",COG:"congo brazzaville|republic of congo",TUR:"turkey",TLS:"timor leste",CIV:"cote d'ivoire|cote divoire",SWZ:"swaziland",CPV:"cabo verde",MMR:"burma",BHS:"bahamas",GMB:"gambia",FSM:"micronesia|fsm|federated states of micronesia",VAT:"vatican|holy see",ARE:"uae|emirates",MKD:"macedonia",PNG:"png",CAF:"car",PRK:"dprk",KOR:"republic of korea",BRN:"brunei darussalam",KGZ:"kyrgyz republic",LAO:"lao",RUS:"russian federation",PSX:"state of palestine|palestinian territories",VIR:"usvi|united states virgin islands|u.s. virgin islands",VGB:"bvi",MNP:"northern marianas|cnmi",TCA:"turks and caicos",PCN:"pitcairn",CYM:"caymans",SAH:"sahrawi republic",TRN:"pridnestrovie|transdniestria",TWN:"republic of china",NLD:"holland",PYF:"tahiti",SOL:"republic of somaliland",SRB:"republic of serbia",TZA:"united republic of tanzania",CHN:"peoples republic of china|prc",NZL:"aotearoa",BON:"caribbean netherlands"};
