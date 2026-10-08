@@ -159,6 +159,8 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--ink)}
 .sw{width:14px;height:14px;border:1px solid var(--line);display:inline-block}
 .sw.dot{border-radius:50%;border:1.5px solid var(--accent);background:var(--land)}
 .credit{margin:0;font-size:.78rem;color:var(--muted)}
+.tolrow{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:.85rem;cursor:pointer}
+.tolrow select{height:32px;font-size:.85rem;max-width:none}
 .credit a{color:inherit}
 #tip{position:fixed;z-index:5;pointer-events:none;background:var(--ink);color:var(--paper);font:500 .82rem var(--sans);padding:4px 8px;border-radius:2px;max-width:240px}
 </style>
@@ -208,7 +210,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--ink)}
         <label class="opt" for="pGuesses"><span>Guesses per place</span><select id="pGuesses"><option>1</option><option>2</option><option>3</option><option>4</option></select></label>
         <label class="opt" for="pNoBorders"><span>No borders: land is drawn without country outlines</span><input type="checkbox" id="pNoBorders"></label>
         <label class="opt" for="pHard"><span>Hard mode: a wrong tap is not named or shown</span><input type="checkbox" id="pHard"></label>
-        <label class="opt" for="pTol"><span>Finger size for touch</span><select id="pTol"><option value="40">Small</option><option value="70">Medium</option><option value="100">Large</option></select></label>
+        <label class="opt" for="pTol"><span>Finger size for touch</span><select id="pTol"><option value="12">Small</option><option value="20">Medium</option><option value="32">Large</option></select></label>
       </div>
       <span class="note" id="pNote"></span>
       <div class="acts"><button class="go" type="submit">Start pinning</button><button type="button" class="tomodes">&larr; Modes</button></div>
@@ -265,6 +267,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--ink)}
       <span><i class="sw dot"></i>Small place, tap the dot</span>
       <span><i class="sw" style="background:var(--terr)"></i>Not on the list</span>
     </div>
+  <label class="tolrow" id="tolRow" for="pTolGame" hidden>Finger size <select id="pTolGame"><option value="12">Small</option><option value="20">Medium</option><option value="32">Large</option></select></label>
   <p class="credit">Maritime zones: Flanders Marine Institute, <a href="https://www.marineregions.org/" target="_blank" rel="noopener">Marine Regions</a> EEZ v12, CC BY 4.0.</p>
   </div>
 
@@ -294,16 +297,17 @@ for(const k of ["main","carib","pac"]){const v=V[k],L=LAY[k];
   if(L.cap){g.appendChild(el("rect",{class:"frame",width:v.w,height:v.h}));const t=el("text",{class:"capt",x:8,y:v.h-9});t.textContent=L.cap;g.appendChild(t)}
   svg0.appendChild(g);}
 const N=Object.keys(P).length;
-const S={ePlaces:"all",eHover:true,tPlaces:"all",tRegion:"all",tCount:"all",tGuesses:"3",tHints:true,tTypos:true,tHard:false,pPlaces:"all",pRegion:"all",pCount:"all",pGuesses:"3",pTol:"100",pHard:false,pNoBorders:false};
+const S={ePlaces:"all",eHover:true,tPlaces:"all",tRegion:"all",tCount:"all",tGuesses:"3",tHints:true,tTypos:true,tHard:false,pPlaces:"all",pRegion:"all",pCount:"all",pGuesses:"3",pTol:"20",pHard:false,pNoBorders:false};
 try{Object.assign(S,JSON.parse(localStorage.getItem("cgm-settings")||"{}"))}catch(_){}
 // settings v2: typos cost a guess by default, so switch it on once for settings saved under the old default
 try{if((+localStorage.getItem("cgm-settings-v")||1)<2){S.tTypos=true;localStorage.setItem("cgm-settings",JSON.stringify(S));localStorage.setItem("cgm-settings-v","2")}}catch(_){}
-if(!["40","70","100"].includes(String(S.pTol)))S.pTol="100"; // older saved sizes were too small
+if(!["12","20","32"].includes(String(S.pTol)))S.pTol="20"; // sizes saved under older scales fall back to Medium
 const inSet=(c,set)=>set!=="195"||P[c].s;
 const pool=m=>Object.keys(P).filter(c=>inSet(c,S[m+"Places"])&&(S[m+"Region"]==="all"||P[c].k===S[m+"Region"]));
 function note(){for(const m of "tp"){const n=pool(m).length,k=S[m+"Count"],q=k==="all"?n:Math.min(n,+k);$(m+"Note").textContent=`This round: ${q} ${q===1?"place":"places"}`+(q<n?` drawn from ${n}`:"")}}
 for(const k in S){const e=$(k),box=e.type==="checkbox";if(box)e.checked=!!S[k];else e.value=S[k];
   e.addEventListener("change",()=>{S[k]=box?e.checked:e.value;try{localStorage.setItem("cgm-settings",JSON.stringify(S))}catch(_){}note()})}
+$("pTolGame").addEventListener("change",e=>{S.pTol=e.target.value;$("pTol").value=S.pTol;try{localStorage.setItem("cgm-settings",JSON.stringify(S))}catch(_){}});
 note();
 let quizOn=false;
 
@@ -494,7 +498,7 @@ function enter(mode){ // "e" explore, "t" type, null back to setup
   $("guess").hidden=p;$("pname").hidden=!p;$("keyOn").hidden=p;$("qlab").textContent=p?"Find this place":"Which place is highlighted?";
   main.querySelectorAll("[data-c]").forEach(e=>e.classList.toggle("off",!inSet(e.dataset.c,set)));
   for(const c in P)if(inSet(c,set))n++;
-  $("quiz").hidden=!q;$("readout").hidden=q;$("keyQuiz").hidden=!q;$("keyExplore").hidden=q;main.classList.toggle("quizzing",q);main.classList.toggle("noborders",p&&!!S.pNoBorders);
+  $("quiz").hidden=!q;$("readout").hidden=q;$("keyQuiz").hidden=!q;$("keyExplore").hidden=q;main.classList.toggle("quizzing",q);main.classList.toggle("noborders",p&&!!S.pNoBorders);$("tolRow").hidden=!p;$("pTolGame").value=S.pTol;
   $("sub").textContent=p?"Tap the place that is named.":q?"A place lights up. Type its name.":n+" clickable places. Tap one to select it.";
   scrollTo(0,0);full();if(q){start();if(!p)$("guess").focus({preventScroll:true})}}
 function choose(m){$("modes").hidden=!!m;$("fExplore").hidden=m!=="e";$("fType").hidden=m!=="t";$("fPin").hidden=m!=="p";
