@@ -19,15 +19,15 @@
   --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --table:#0e1417; --paper:#162024; --ink:#e4ebe8; --muted:#93a0a2; --rule:#2b373a;
-  --ocean:#11252d; --land:#7d7049; --line:#0e1417; --terr:#3c413f;
-  --hover:#b19c5a; --pick:#f4f7f5; --accent:#e45cbf;
-  --first:#4cb96c; --later:#f0a23a; --miss:#ec5b4d; --flash:#a184ee; --good:#5fcf88; --bad:#ff9084; color-scheme:dark } }
+  --table:#0f1317; --paper:#161b20; --ink:#e6eaee; --muted:#8f9aa4; --rule:#2a3139;
+  --ocean:#0c2133; --land:#414a53; --line:#1a2026; --terr:#272c31;
+  --hover:#66727e; --pick:#f4f7f5; --accent:#b886ad;
+  --first:#4cc073; --later:#f2a83f; --miss:#f0604f; --flash:#a48af0; --good:#64d491; --bad:#ff9a8c; color-scheme:dark } }
 :root[data-theme="dark"]{
-  --table:#0e1417; --paper:#162024; --ink:#e4ebe8; --muted:#93a0a2; --rule:#2b373a;
-  --ocean:#11252d; --land:#7d7049; --line:#0e1417; --terr:#3c413f;
-  --hover:#b19c5a; --pick:#f4f7f5; --accent:#e45cbf;
-  --first:#4cb96c; --later:#f0a23a; --miss:#ec5b4d; --flash:#a184ee; --good:#5fcf88; --bad:#ff9084; color-scheme:dark }
+  --table:#0f1317; --paper:#161b20; --ink:#e6eaee; --muted:#8f9aa4; --rule:#2a3139;
+  --ocean:#0c2133; --land:#414a53; --line:#1a2026; --terr:#272c31;
+  --hover:#66727e; --pick:#f4f7f5; --accent:#b886ad;
+  --first:#4cc073; --later:#f2a83f; --miss:#f0604f; --flash:#a48af0; --good:#64d491; --bad:#ff9a8c; color-scheme:dark }
 html{-webkit-text-size-adjust:100%}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -84,6 +84,30 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--ink)}
 #qmsg.good{color:var(--good)} #qmsg.bad{color:var(--bad)}
 #qscore{font-size:.82rem;color:var(--muted);font-variant-numeric:tabular-nums}
 
+/* The game fills the window: header and legend take what they need and the chart gets the rest, so the page never scrolls */
+#game{height:100vh;height:100dvh;max-width:1400px}
+.stage{flex:1 1 auto;min-height:260px;container-type:size;display:flex;justify-content:center;align-items:flex-start}
+/* when the window is narrow the map is limited by width, so cap the stage at the map height and let the legend follow it */
+.stage{max-height:calc((min(100vw,1400px) - 32px - 10px)/var(--ar) + 10px)}
+.stage .sheet{width:min(100cqw,(100cqh - 10px)*var(--ar) + 10px)}
+#game header>div:first-child{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+#game .sub{display:none}
+#game #back{margin-top:0}
+#game .readout{padding:8px 14px}
+.bar .credit{margin-left:auto}
+/* Wide screens: controls and legend in a left column, the chart fills the full height beside it */
+@media (min-width:960px){
+  #game{display:grid;max-width:none;grid-template-columns:clamp(300px,24vw,360px) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;column-gap:28px;row-gap:16px}
+  #game header{grid-column:1;grid-row:1;flex-direction:column;align-items:stretch;gap:14px}
+  #game header>div:first-child{flex-direction:column;align-items:flex-start;gap:10px}
+  #game h1{font-size:1.9rem}
+  #game .readout{max-width:none;flex:0 0 auto;padding:12px 16px}
+  #game .stage{grid-column:2;grid-row:1/4;max-height:none;min-height:0;align-items:center}
+  #game .bar{grid-column:1;grid-row:2/4;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:14px}
+  #game .bar .key{display:grid;justify-items:start;gap:8px}
+  #game .bar .credit{margin-left:0;margin-top:auto}
+}
+@media (max-width:600px){#game h1{display:none}#game header{flex-direction:column;align-items:stretch;gap:8px}#game .readout{max-width:none;flex:0 0 auto}#game #back{align-self:flex-start;height:30px}}
 /* The chart: a heavy outer neatline, a gap, and a hairline inner one */
 .sheet{position:relative;border:2px solid var(--ink);padding:3px;background:var(--paper)}
 .sheet svg{display:block;width:100%;height:auto;outline:1px solid var(--ink)}
@@ -217,6 +241,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--ink)}
     </form>
   </header>
 
+  <div class="stage">
   <div class="sheet">
     <svg id="main" role="img" aria-label="World map with Pacific islands and Caribbean insets"></svg>
     <div id="toast" role="status" hidden></div>
@@ -225,6 +250,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--ink)}
       <button id="zout" type="button" aria-label="Zoom out">&minus;</button>
       <button id="zreset" type="button" aria-label="Reset view">&#8962;</button>
     </div>
+  </div>
   </div>
 
   <div class="bar">
@@ -239,8 +265,8 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--ink)}
       <span><i class="sw dot"></i>Small place, tap the dot</span>
       <span><i class="sw" style="background:var(--terr)"></i>Not on the list</span>
     </div>
-  </div>
   <p class="credit">Maritime zones: Flanders Marine Institute, <a href="https://www.marineregions.org/" target="_blank" rel="noopener">Marine Regions</a> EEZ v12, CC BY 4.0.</p>
+  </div>
 
 </div>
 <div id="tip" hidden></div>
@@ -249,6 +275,7 @@ const DATA={"places":{"ABK":{"n":"Abkhazia","r":"Western Asia","k":"Asia","s":0}
 const NS="http://www.w3.org/2000/svg",P=DATA.places,$=id=>document.getElementById(id);
 const V=DATA.views,GAP=12,SC=.6,X0=(V.main.w-(V.pac.w+V.carib.w)*SC-GAP)/2,RI=2.2/SC;
 const CAN={w:V.main.w,h:Math.round(V.main.h+GAP+V.pac.h*SC)};
+document.documentElement.style.setProperty("--ar",CAN.w/CAN.h);
 const LAY={main:{x:0,y:0,s:1,r:2.2},carib:{x:X0,y:V.main.h+GAP,s:SC,r:RI,cap:"Caribbean Sea"},pac:{x:X0+V.carib.w*SC+GAP,y:V.main.h+GAP,s:SC,r:RI,cap:"Pacific Ocean"},_o:{x:0,y:V.main.h+GAP,s:SC,r:RI,cap:"Caribbean"}};
 const el=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e};
 // Land is clickable wherever it is drawn. Each place gets its dot in one view only: the inset it has a dot in.
