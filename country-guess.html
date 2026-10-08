@@ -294,8 +294,10 @@ for(const k of ["main","carib","pac"]){const v=V[k],L=LAY[k];
   if(L.cap){g.appendChild(el("rect",{class:"frame",width:v.w,height:v.h}));const t=el("text",{class:"capt",x:8,y:v.h-9});t.textContent=L.cap;g.appendChild(t)}
   svg0.appendChild(g);}
 const N=Object.keys(P).length;
-const S={ePlaces:"all",eHover:true,tPlaces:"all",tRegion:"all",tCount:"all",tGuesses:"3",tHints:true,tTypos:false,tHard:false,pPlaces:"all",pRegion:"all",pCount:"all",pGuesses:"3",pTol:"100",pHard:false,pNoBorders:false};
+const S={ePlaces:"all",eHover:true,tPlaces:"all",tRegion:"all",tCount:"all",tGuesses:"3",tHints:true,tTypos:true,tHard:false,pPlaces:"all",pRegion:"all",pCount:"all",pGuesses:"3",pTol:"100",pHard:false,pNoBorders:false};
 try{Object.assign(S,JSON.parse(localStorage.getItem("cgm-settings")||"{}"))}catch(_){}
+// settings v2: typos cost a guess by default, so switch it on once for settings saved under the old default
+try{if((+localStorage.getItem("cgm-settings-v")||1)<2){S.tTypos=true;localStorage.setItem("cgm-settings",JSON.stringify(S));localStorage.setItem("cgm-settings-v","2")}}catch(_){}
 if(!["40","70","100"].includes(String(S.pTol)))S.pTol="100"; // older saved sizes were too small
 const inSet=(c,set)=>set!=="195"||P[c].s;
 const pool=m=>Object.keys(P).filter(c=>inSet(c,S[m+"Places"])&&(S[m+"Region"]==="all"||P[c].k===S[m+"Region"]));
@@ -430,9 +432,9 @@ function next(){busy=false;toast("");
     qmsg(`Finished: ${ok} of ${T} correct (${Math.round(100*ok/T)}%), ${n1} on the first guess.`,"good");$("guess").disabled=true;$("check").hidden=$("skip").hidden=true;$("again").hidden=false;return}
   show(queue.pop());score();}
 function settle(cls,wait){ // colour the current place, then move on after a beat
-  const c=cur;all(c).forEach(e=>{e.classList.remove("on");e.classList.add(cls)});ring.setAttribute("visibility","hidden");
+  const c=cur;DONE.add(c);all(c).forEach(e=>{e.classList.remove("on");e.classList.add(cls)});ring.setAttribute("visibility","hidden");
   cur=null;$("hint").hidden=true;busy=true;$("guess").value="";score();timer=setTimeout(next,wait);}
-function start(){clearTimeout(timer);ring.classList.remove("miss");MAXT=+S[gm+"Guesses"];queue=pool(gm);for(let i=queue.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[queue[i],queue[j]]=[queue[j],queue[i]]}
+function start(){clearTimeout(timer);DONE=new Set();ring.classList.remove("miss");MAXT=+S[gm+"Guesses"];queue=pool(gm);for(let i=queue.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[queue[i],queue[j]]=[queue[j],queue[i]]}
   if(S[gm+"Count"]!=="all")queue=queue.slice(0,+S[gm+"Count"]);T=queue.length;
   main.querySelectorAll(".s1,.s2,.s3").forEach(e=>e.classList.remove("s1","s2","s3"));
   n1=n2=n3=0;qmsg("");$("guess").disabled=false;$("guess").value="";$("skip").hidden=false;$("check").hidden=gm==="p";$("again").hidden=true;saved=null;revealed=false;next();}
@@ -448,7 +450,8 @@ $("skip").onclick=()=>{if(gm==="t")$("guess").focus();if(!cur||busy)return;n3++;
   if(gm==="p"){qmsg(P[c].n+" is shown in red.","bad");settle("s3",0);reveal(c)}else{qmsg("That was "+P[c].n+".","bad");settle("s3",1800)}};
 // Which single place does a tap mean? Measure the distance from the tap to every clickable shape and dot, take the
 // nearest, and zoom in to ask again only when the runner-up is nearly as close. The finger size caps how far a tap reaches.
-let SAMP=null; // boundary points of every clickable shape and the centre of every dot, in canvas units
+let SAMP=null;
+let DONE=new Set(),onDone=false; // pin mode: places already answered or revealed this round can't be picked again // boundary points of every clickable shape and the centre of every dot, in canvas units
 function samples(){if(SAMP)return SAMP;SAMP=[];
   main.querySelectorAll("path.c").forEach(p=>{const L=LAY[p.dataset.v],len=p.getTotalLength(),n=Math.min(400,Math.max(6,Math.ceil(len/4)));
     for(let i=0;i<n;i++){const q=p.getPointAtLength(i*len/n);SAMP.push({c:p.dataset.c,x:L.x+q.x*L.s,y:L.y+q.y*L.s,r:0,e:p})}});
@@ -457,9 +460,11 @@ function samples(){if(SAMP)return SAMP;SAMP=[];
 function resolve(e,remember){const F=(e.pointerType||lastType)==="mouse"?4:+S.pTol;toast("");
   const b=main.getBoundingClientRect(),vh=vb.w*asp,k=Math.min(b.width/vb.w,b.height/vh); // screen px per canvas unit, allowing for letterboxing
   const tx=vb.x+(e.clientX-b.left-(b.width-vb.w*k)/2)/k,ty=vb.y+(e.clientY-b.top-(b.height-vh*k)/2)/k; // tap in canvas units
-  const set=S[gm+"Places"],near=new Map();
-  for(const p of samples()){if(!inSet(p.c,set))continue;const d=Math.max(0,(Math.hypot(p.x-tx,p.y-ty)-p.r)*k);if(d>F)continue;const o=near.get(p.c);if(!o||d<o.d)near.set(p.c,{d,e:p.e})}
-  const under=document.elementFromPoint(e.clientX,e.clientY),uc=under&&main.contains(under)&&!under.classList.contains("off")&&inSet(under.dataset.c||"",set)?under.dataset.c:null;
+  const set=S[gm+"Places"],near=new Map(),skip=c=>!inSet(c,set)||(quizOn&&gm==="p"&&DONE.has(c));onDone=false;
+  for(const p of samples()){if(skip(p.c))continue;const d=Math.max(0,(Math.hypot(p.x-tx,p.y-ty)-p.r)*k);if(d>F)continue;const o=near.get(p.c);if(!o||d<o.d)near.set(p.c,{d,e:p.e})}
+  const under=document.elementFromPoint(e.clientX,e.clientY),uc0=under&&main.contains(under)&&!under.classList.contains("off")&&inSet(under.dataset.c||"",set)?under.dataset.c:null;
+  if(uc0&&skip(uc0)){onDone=true;return null}          // straight onto a place that is already done
+  const uc=uc0;
   if(uc&&!under.classList.contains("z"))near.set(uc,{d:0,e:under});
   const list=[...near].sort((a,b)=>a[1].d-b[1].d);NEAR=list.map(v=>v[0]);
   if(uc&&!under.classList.contains("z")){const r=under.getBoundingClientRect();if(Math.min(r.width,r.height)>=24)return uc}   // inside a shape big enough to aim at: not in doubt
@@ -470,8 +475,8 @@ function resolve(e,remember){const F=(e.pointerType||lastType)==="mouse"?4:+S.pT
   const ra=list[0][1].e.getBoundingClientRect(),rb=list[1][1].e.getBoundingClientRect(),sep=Math.hypot(ra.left+ra.width/2-rb.left-rb.width/2,ra.top+ra.height/2-rb.top-rb.height/2);
   zoomAt(Math.max(3,Math.min(12,2.6*F/Math.max(sep,1))),e.clientX,e.clientY);toast("Too close to call. Zoomed in: tap the one you mean.");return false}
 let charged=new Set(); // wrong places already charged for the current question
-function tap(e){if(!cur||busy)return;if(ring.classList.contains("miss")){ring.classList.remove("miss");ring.setAttribute("visibility","hidden")}const choice=resolve(e,true);if(choice===null){qmsg("That is open water. Tap a place.");return}if(choice===false)return;
-  if(choice!==cur&&NEAR.includes(cur)&&vb.w>CAN.w/80*1.01){if(!saved)saved={x:vb.x,y:vb.y,w:vb.w};zoomAt(3,e.clientX,e.clientY);toast("Close. Zoomed in: tap the one you mean.");return}
+function tap(e){if(!cur||busy)return;if(ring.classList.contains("miss")){ring.classList.remove("miss");ring.setAttribute("visibility","hidden")}const choice=resolve(e,true);if(choice===null){qmsg(onDone?"That one is already done. Tap another place.":"That is open water. Tap a place.");return}if(choice===false)return;
+  if(choice!==cur&&NEAR.includes(cur)&&vb.w>CAN.w/80*1.01){if(!saved)saved={x:vb.x,y:vb.y,w:vb.w};zoomAt(3,e.clientX,e.clientY);qmsg("");toast("Close. Zoomed in: tap the one you mean.");return}
   if(choice!==cur&&charged.has(choice)){if(!S.pHard)flash(choice);qmsg(`${S.pHard?"You already tried that place.":"Still not "+P[choice].n+"."} ${MAXT-tries} ${MAXT-tries===1?"guess":"guesses"} left.`,"bad");return}
   charged.add(choice);
   if(choice===cur){const name=P[cur].n;if(tries===0){n1++;qmsg("Correct, first guess: "+name,"good");settle("s1",700)}else{n2++;qmsg(`Correct on guess ${tries+1}: ${name}`,"good");settle("s2",700)}}
